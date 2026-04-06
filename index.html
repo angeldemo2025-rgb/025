@@ -1,83 +1,25 @@
-<!DOCTYPE html>
+0<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inventario PRO</title>
-
-<style>
-body { font-family:-apple-system; background:#f2f2f7; padding:15px; }
-h1 { text-align:center; }
-.box { background:white; padding:15px; border-radius:20px; margin-top:15px; }
-button { width:100%; padding:12px; border-radius:12px; background:black; color:white; border:none; margin-top:8px; }
-input,select { width:100%; padding:10px; margin-top:8px; border-radius:10px; }
-li { padding:10px; border-radius:10px; margin-top:6px; }
-.lista { background:#e0f0ff; }
-.check { background:#e0ffe0; }
-</style>
-</head>
-
-<body>
-
-<h1 id="titulo">Inventario PRO</h1>
-
-<select id="lang">
-<option value="es">Español</option>
-<option value="en">English</option>
-</select>
-
-<button id="btnVolver">⬅ Volver</button>
-
-<div class="box">
-<h3 id="tPush">🔔 Notificaciones</h3>
-<button id="bPush">Activar</button>
-</div>
-
-<div class="box">
-<h3 id="tCrear">📁 Crear Lista</h3>
-<input id="nombreLista" placeholder="Nombre">
-<select id="tipoLista">
-<option value="lista">Lista</option>
-<option value="checklist">Checklist</option>
-</select>
-<button id="bCrear">Crear</button>
-</div>
-
-<div class="box">
-<h3 id="tListas">📂 Listas</h3>
-<ul id="listas"></ul>
-</div>
-
-<div class="box">
-<h3 id="itemsTitulo">🧾 Items</h3>
-<input id="itemTexto" placeholder="Item">
-<input id="itemCantidad" type="number" placeholder="Cantidad">
-<button id="bAgregar">Agregar</button>
-<ul id="items"></ul>
-</div>
-
-<div class="box">
-<h3 id="tSchedule">⏰ Schedule</h3>
-<input id="tituloHora" placeholder="Ej: Llenar inventario">
-<input id="hora" type="time">
-<button id="bGuardar">Guardar</button>
-</div>
+<title>list>pro</title>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  query, 
+  where 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-import {
-  getMessaging, getToken, onMessage
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
-
-// 🔥 CONFIG
+// 🔥 TU FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyBpWDSAOYjkaJCSjpkzcIy2PuPKCLvwGWE",
   authDomain: "inventario-app-bf9af.firebaseapp.com",
+  databaseURL: "https://inventario-app-bf9af-default-rtdb.firebaseio.com",
   projectId: "inventario-app-bf9af",
   storageBucket: "inventario-app-bf9af.firebasestorage.app",
   messagingSenderId: "737450804732",
@@ -86,166 +28,166 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const messaging = getMessaging(app);
 
-// 🔐 MODO
-const params = new URLSearchParams(window.location.search);
-const modo = params.get("modo") || "admin";
+// 📌 VARIABLES
+let listaActiva = null;
 
-// UI
-if(modo !== "admin"){
-  document.getElementById("btnVolver").style.display = "none";
-}
+// 📌 CREAR LISTA
+window.crearLista = async () => {
+  const nombre = document.getElementById("nombreLista").value.trim();
+  if (!nombre) return alert("Escribe un nombre");
 
-// 🌎 IDIOMA
-const textos = {
-  es:{titulo:"Inventario PRO",crear:"Crear Lista",listas:"Listas",items:"Items",agregar:"Agregar",guardar:"Guardar",push:"Activar Notificaciones",schedule:"Horario"},
-  en:{titulo:"Inventory PRO",crear:"Create List",listas:"Lists",items:"Items",agregar:"Add",guardar:"Save",push:"Enable Notifications",schedule:"Schedule"}
+  const docRef = await addDoc(collection(db, "listas"), {
+    nombre
+  });
+
+  document.getElementById("nombreLista").value = "";
+  listaActiva = docRef.id;
+
+  cargarListas();
 };
 
-function aplicarIdioma(lang){
-  titulo.innerText = textos[lang].titulo;
-  tPush.innerText="🔔 "+textos[lang].push;
-  tCrear.innerText="📁 "+textos[lang].crear;
-  tListas.innerText="📂 "+textos[lang].listas;
-  itemsTitulo.innerText="🧾 "+textos[lang].items;
-  tSchedule.innerText="⏰ "+textos[lang].schedule;
+// 📌 AGREGAR ITEM
+window.agregarItem = async () => {
+  if (!listaActiva) return alert("Selecciona una lista primero");
 
-  bPush.innerText=textos[lang].push;
-  bCrear.innerText=textos[lang].crear;
-  bAgregar.innerText=textos[lang].agregar;
-  bGuardar.innerText=textos[lang].guardar;
-}
-lang.addEventListener("change",e=>aplicarIdioma(e.target.value));
+  const nombre = document.getElementById("itemNombre").value.trim();
+  const cantidad = document.getElementById("itemCantidad").value.trim();
 
-// 🔔 PUSH
-async function activarPush(){
-  const permiso = await Notification.requestPermission();
-  if(permiso!=="granted") return;
-  if ('serviceWorker'in navigator){
-    await  navigator.serviceWorker.register('/
-  firebase-messaging-sw.js');
-  }
-const token = await getToken(messaging, {
-  vapidKey: "BBu_WLDUtd1L2oXJrFCPfCsVGZBcZzaX-uS7RPxs441HyJtChb1FcLTOhmOs0qAQWKv-OV01NFRBQtLG1tNIPog"
-});
- 
-  console.log("TOKEN:",token);
+  if (!nombre || !cantidad) return alert("Llena los campos");
 
-  await addDoc(collection(db,"tokens"),{token});
-}
-onMessage(messaging,p=>{
-  new Notification(p.notification.title,{body:p.notification.body});
-});
+  await addDoc(collection(db, "items"), {
+    nombre,
+    cantidad,
+    listaId: listaActiva
+  });
 
-// 📁 LISTAS
-let listaActiva=null, tipoActual=null;
+  document.getElementById("itemNombre").value = "";
+  document.getElementById("itemCantidad").value = "";
 
-async function crearLista(){
-  if(modo!=="admin") return;
+  cargarItems(listaActiva);
+};
 
-  const nombre=nombreLista.value;
-  const tipo=tipoLista.value;
+// 📌 CARGAR LISTAS
+async function cargarListas() {
+  const cont = document.getElementById("listas");
+  cont.innerHTML = "";
 
-  const ref=await addDoc(collection(db,"listas"),{nombre,tipo});
-  listaActiva=ref.id;
-}
+  const snapshot = await getDocs(collection(db, "listas"));
 
-onSnapshot(collection(db,"listas"),snap=>{
-  listas.innerHTML="";
-  snap.forEach(d=>{
-    const data=d.data();
-    const li=document.createElement("li");
-    li.innerText=data.nombre;
+  snapshot.forEach(doc => {
+    const data = doc.data();
 
-    li.onclick=()=>{
-      listaActiva=d.id;
-      tipoActual=data.tipo;
-      itemsTitulo.innerText="🧾 "+data.nombre;
-      cargarItems();
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerText = data.nombre;
+
+    div.onclick = () => {
+      listaActiva = doc.id;
+      cargarItems(doc.id);
     };
 
-    listas.appendChild(li);
-  });
-});
-
-// ➕ ITEM
-async function agregarItem(){
-  if(modo!=="admin") return;
-
-  await addDoc(collection(db,"listas",listaActiva,"items"),{
-    texto:itemTexto.value,
-    cantidad:itemCantidad.value||0,
-    checked:false
+    cont.appendChild(div);
   });
 }
 
-// 📦 ITEMS
-function cargarItems(){
-  onSnapshot(collection(db,"listas",listaActiva,"items"),snap=>{
-    items.innerHTML="";
+// 📌 CARGAR ITEMS
+async function cargarItems(listaId) {
+  const cont = document.getElementById("items");
+  cont.innerHTML = "";
 
-    snap.forEach(d=>{
-      const data=d.data();
-      const id=d.id;
-      const li=document.createElement("li");
+  const q = query(collection(db, "items"), where("listaId", "==", listaId));
+  const snapshot = await getDocs(q);
 
-      if(modo==="view"){
-        li.innerHTML=`${data.texto} - ${data.cantidad}`;
-      }
-      else if(modo==="fill"){
-        li.innerHTML=`
-          ${data.texto}
-          <input type="number" value="${data.cantidad}"
-          onchange="window.editar('${id}',this.value)">
-        `;
-      }
-      else{
-        li.innerHTML=`
-          ${data.texto}
-          <input type="number" value="${data.cantidad}"
-          onchange="window.editar('${id}',this.value)">
-          <button onclick="window.borrar('${id}')">❌</button>
-        `;
-      }
+  snapshot.forEach(doc => {
+    const data = doc.data();
 
-      li.className = tipoActual==="checklist" ? "check":"lista";
-      items.appendChild(li);
-    });
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerText = `${data.nombre} - ${data.cantidad}`;
+
+    cont.appendChild(div);
   });
 }
 
-// ✏️
-window.editar=async(id,val)=>{
-  if(modo==="view") return;
-  await updateDoc(doc(db,"listas",listaActiva,"items",id),{cantidad:val});
+// INIT
+window.onload = () => {
+  cargarListas();
 };
-
-// 🗑
-window.borrar=async(id)=>{
-  if(modo!=="admin") return;
-  await deleteDoc(doc(db,"listas",listaActiva,"items",id));
-};
-
-// ⏰
-async function guardarHora(){
-  await addDoc(collection(db,"schedules"),{
-    titulo:tituloHora.value,
-    hora:hora.value
-  });
-}
-
-// 🔗 BOTONES
-bCrear.addEventListener("click",crearLista);
-bAgregar.addEventListener("click",agregarItem);
-bPush.addEventListener("click",activarPush);
-bGuardar.addEventListener("click",guardarHora);
-
-btnVolver.addEventListener("click",()=>location.reload());
-
-console.log("APP OK 🔥");
 
 </script>
+
+<style>
+body {
+  margin: 0;
+  font-family: -android-system, BlinkMacSystemFont;
+  background: #f2f4f7;
+}
+
+.container {
+  padding: 15px;
+}
+
+h2 {
+  margin-top: 20px;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 12px;
+  background: black;
+  color: white;
+  font-size: 16px;
+}
+
+.card {
+  background: white;
+  padding: 15px;
+  margin-top: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.item {
+  background: #fff;
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: 10px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Crear Lista</h2>
+<input id="nombreLista" placeholder="Nombre de la lista">
+<button onclick="crearLista()">Crear</button>
+
+<h2>Listas</h2>
+<div id="listas"></div>
+
+<h2>Items</h2>
+<input id="itemNombre" placeholder="Nombre del item">
+<input id="itemCantidad" placeholder="Cantidad">
+<button onclick="agregarItem()">Agregar</button>
+
+<div id="items"></div>
+
+</div>
 
 </body>
 </html>
