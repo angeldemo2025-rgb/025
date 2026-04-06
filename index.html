@@ -6,39 +6,14 @@
 <title>Inventario PRO</title>
 
 <style>
-body {
-  font-family: -apple-system;
-  background: #f2f2f7;
-  padding: 15px;
-}
-h1 { text-align: center; }
-.box {
-  background: white;
-  padding: 15px;
-  border-radius: 20px;
-  margin-top: 15px;
-}
-button {
-  width: 100%;
-  padding: 12px;
-  border-radius: 12px;
-  background: black;
-  color: white;
-  border: none;
-  margin-top: 8px;
-}
-input, select {
-  width: 100%;
-  padding: 10px;
-  margin-top: 8px;
-  border-radius: 10px;
-}
-li {
-  background: #f9f9f9;
-  padding: 10px;
-  border-radius: 10px;
-  margin-top: 6px;
-}
+body { font-family:-apple-system; background:#f2f2f7; padding:15px; }
+h1 { text-align:center; }
+.box { background:white; padding:15px; border-radius:20px; margin-top:15px; }
+button { width:100%; padding:12px; border-radius:12px; background:black; color:white; border:none; margin-top:8px; }
+input,select { width:100%; padding:10px; margin-top:8px; border-radius:10px; }
+li { padding:10px; border-radius:10px; margin-top:6px; }
+.lista { background:#e0f0ff; }
+.check { background:#e0ffe0; }
 </style>
 </head>
 
@@ -47,57 +22,59 @@ li {
 <h1 id="titulo">Inventario PRO</h1>
 
 <select id="lang">
-  <option value="es">Español</option>
-  <option value="en">English</option>
+<option value="es">Español</option>
+<option value="en">English</option>
 </select>
 
+<button id="btnVolver">⬅ Volver</button>
+
 <div class="box">
-  <h3>🔔 Notificaciones</h3>
-  <button onclick="activarPush()">Activar Push</button>
+<h3 id="tPush">🔔 Notificaciones</h3>
+<button id="bPush">Activar</button>
 </div>
 
 <div class="box">
-  <h3>📁 Crear Lista</h3>
-  <input id="nombreLista" placeholder="Nombre">
-  <select id="tipoLista">
-    <option value="lista">Lista</option>
-    <option value="checklist">Checklist</option>
-  </select>
-  <button onclick="crearLista()">Crear</button>
+<h3 id="tCrear">📁 Crear Lista</h3>
+<input id="nombreLista" placeholder="Nombre">
+<select id="tipoLista">
+<option value="lista">Lista</option>
+<option value="checklist">Checklist</option>
+</select>
+<button id="bCrear">Crear</button>
 </div>
 
 <div class="box">
-  <h3>📂 Listas</h3>
-  <ul id="listas"></ul>
+<h3 id="tListas">📂 Listas</h3>
+<ul id="listas"></ul>
 </div>
 
 <div class="box">
-  <h3>🧾 Items</h3>
-  <input id="itemTexto" placeholder="Item">
-  <input id="itemCantidad" type="number" placeholder="Cantidad">
-  <button onclick="agregarItem()">Agregar</button>
-  <ul id="items"></ul>
+<h3 id="itemsTitulo">🧾 Items</h3>
+<input id="itemTexto" placeholder="Item">
+<input id="itemCantidad" type="number" placeholder="Cantidad">
+<button id="bAgregar">Agregar</button>
+<ul id="items"></ul>
 </div>
 
 <div class="box">
-  <h3>⏰ Schedule</h3>
-  <input id="tituloHora" placeholder="Ej: Llenar inventario">
-  <input id="hora" type="time">
-  <button onclick="guardarHora()">Guardar</button>
+<h3 id="tSchedule">⏰ Schedule</h3>
+<input id="tituloHora" placeholder="Ej: Llenar inventario">
+<input id="hora" type="time">
+<button id="bGuardar">Guardar</button>
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, onSnapshot, doc, updateDoc
+  getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 import {
   getMessaging, getToken, onMessage
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 
-// 🔥 TU CONFIG
+// 🔥 CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyBpWDSAOYjkaJCSjpkzcIy2PuPKCLvwGWE",
   authDomain: "inventario-app-bf9af.firebaseapp.com",
@@ -111,55 +88,80 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const messaging = getMessaging(app);
 
-let listaActiva = null;
-let tipoActual = null;
+// 🔐 MODO
+const params = new URLSearchParams(window.location.search);
+const modo = params.get("modo") || "admin";
+
+// UI
+if(modo !== "admin"){
+  document.getElementById("btnVolver").style.display = "none";
+}
+
+// 🌎 IDIOMA
+const textos = {
+  es:{titulo:"Inventario PRO",crear:"Crear Lista",listas:"Listas",items:"Items",agregar:"Agregar",guardar:"Guardar",push:"Activar Notificaciones",schedule:"Horario"},
+  en:{titulo:"Inventory PRO",crear:"Create List",listas:"Lists",items:"Items",agregar:"Add",guardar:"Save",push:"Enable Notifications",schedule:"Schedule"}
+};
+
+function aplicarIdioma(lang){
+  titulo.innerText = textos[lang].titulo;
+  tPush.innerText="🔔 "+textos[lang].push;
+  tCrear.innerText="📁 "+textos[lang].crear;
+  tListas.innerText="📂 "+textos[lang].listas;
+  itemsTitulo.innerText="🧾 "+textos[lang].items;
+  tSchedule.innerText="⏰ "+textos[lang].schedule;
+
+  bPush.innerText=textos[lang].push;
+  bCrear.innerText=textos[lang].crear;
+  bAgregar.innerText=textos[lang].agregar;
+  bGuardar.innerText=textos[lang].guardar;
+}
+lang.addEventListener("change",e=>aplicarIdioma(e.target.value));
 
 // 🔔 PUSH
-window.activarPush = async () => {
+async function activarPush(){
   const permiso = await Notification.requestPermission();
-  if (permiso !== "granted") return alert("Permiso denegado");
+  if(permiso!=="granted") return;
+  if ('serviceWorker'in navigator){
+    await  navigator.serviceWorker.register('/
+  firebase-messaging-sw.js');
+  }
+const token = await getToken(messaging, {
+  vapidKey: "BBu_WLDUtd1L2oXJrFCPfCsVGZBcZzaX-uS7RPxs441HyJtChb1FcLTOhmOs0qAQWKv-OV01NFRBQtLG1tNIPog"
+});
+ 
+  console.log("TOKEN:",token);
 
-  const token = await getToken(messaging, {
-    vapidKey: BBu_WLDUtd1L2oXJrFCPfCsVGZBcZzaX-uS7RPxs441HyJtChb1FcLTOhmOs0qAQWKv-OV01NFRBQtLG1tNIPog
-  });
-
-  console.log("TOKEN:", token);
-
-  await addDoc(collection(db, "tokens"), { token });
-
-  alert("Push activado 🔥");
-};
-
-// 🔔 FOREGROUND
-onMessage(messaging, payload => {
-  new Notification(payload.notification.title, {
-    body: payload.notification.body
-  });
+  await addDoc(collection(db,"tokens"),{token});
+}
+onMessage(messaging,p=>{
+  new Notification(p.notification.title,{body:p.notification.body});
 });
 
-// 📁 CREAR LISTA
-window.crearLista = async () => {
-  const nombre = nombreLista.value;
-  const tipo = tipoLista.value;
+// 📁 LISTAS
+let listaActiva=null, tipoActual=null;
 
-  if (!nombre) return alert("Pon nombre");
+async function crearLista(){
+  if(modo!=="admin") return;
 
-  const ref = await addDoc(collection(db, "listas"), { nombre, tipo });
-  listaActiva = ref.id;
-};
+  const nombre=nombreLista.value;
+  const tipo=tipoLista.value;
 
-// 📂 LISTAS
-onSnapshot(collection(db, "listas"), snap => {
-  listas.innerHTML = "";
-  snap.forEach(docSnap => {
-    const data = docSnap.data();
+  const ref=await addDoc(collection(db,"listas"),{nombre,tipo});
+  listaActiva=ref.id;
+}
 
-    const li = document.createElement("li");
-    li.innerText = data.nombre;
+onSnapshot(collection(db,"listas"),snap=>{
+  listas.innerHTML="";
+  snap.forEach(d=>{
+    const data=d.data();
+    const li=document.createElement("li");
+    li.innerText=data.nombre;
 
-    li.onclick = () => {
-      listaActiva = docSnap.id;
-      tipoActual = data.tipo;
+    li.onclick=()=>{
+      listaActiva=d.id;
+      tipoActual=data.tipo;
+      itemsTitulo.innerText="🧾 "+data.nombre;
       cargarItems();
     };
 
@@ -168,78 +170,80 @@ onSnapshot(collection(db, "listas"), snap => {
 });
 
 // ➕ ITEM
-window.agregarItem = async () => {
-  if (!listaActiva) return alert("Selecciona lista");
+async function agregarItem(){
+  if(modo!=="admin") return;
 
-  await addDoc(collection(db, "listas", listaActiva, "items"), {
-    texto: itemTexto.value,
-    cantidad: itemCantidad.value || 0,
-    checked: false
+  await addDoc(collection(db,"listas",listaActiva,"items"),{
+    texto:itemTexto.value,
+    cantidad:itemCantidad.value||0,
+    checked:false
   });
-};
+}
 
 // 📦 ITEMS
-function cargarItems() {
-  onSnapshot(collection(db, "listas", listaActiva, "items"), snap => {
-    items.innerHTML = "";
+function cargarItems(){
+  onSnapshot(collection(db,"listas",listaActiva,"items"),snap=>{
+    items.innerHTML="";
 
-    snap.forEach(docSnap => {
-      const d = docSnap.data();
-      const id = docSnap.id;
+    snap.forEach(d=>{
+      const data=d.data();
+      const id=d.id;
+      const li=document.createElement("li");
 
-      const li = document.createElement("li");
-
-      if (tipoActual === "checklist") {
-        li.innerHTML = `
-          <input type="checkbox" ${d.checked ? "checked" : ""}
-          onchange="toggle('${id}', ${d.checked})"> ${d.texto}
+      if(modo==="view"){
+        li.innerHTML=`${data.texto} - ${data.cantidad}`;
+      }
+      else if(modo==="fill"){
+        li.innerHTML=`
+          ${data.texto}
+          <input type="number" value="${data.cantidad}"
+          onchange="window.editar('${id}',this.value)">
         `;
-      } else {
-        li.innerHTML = `
-          ${d.texto}
-          <input type="number" value="${d.cantidad}"
-          onchange="editar('${id}', this.value)">
+      }
+      else{
+        li.innerHTML=`
+          ${data.texto}
+          <input type="number" value="${data.cantidad}"
+          onchange="window.editar('${id}',this.value)">
+          <button onclick="window.borrar('${id}')">❌</button>
         `;
       }
 
+      li.className = tipoActual==="checklist" ? "check":"lista";
       items.appendChild(li);
     });
   });
 }
 
-// ✏️ EDITAR
-window.editar = async (id, val) => {
-  await updateDoc(doc(db, "listas", listaActiva, "items", id), {
-    cantidad: val
+// ✏️
+window.editar=async(id,val)=>{
+  if(modo==="view") return;
+  await updateDoc(doc(db,"listas",listaActiva,"items",id),{cantidad:val});
+};
+
+// 🗑
+window.borrar=async(id)=>{
+  if(modo!=="admin") return;
+  await deleteDoc(doc(db,"listas",listaActiva,"items",id));
+};
+
+// ⏰
+async function guardarHora(){
+  await addDoc(collection(db,"schedules"),{
+    titulo:tituloHora.value,
+    hora:hora.value
   });
-};
+}
 
-// ✔️ CHECK
-window.toggle = async (id, estado) => {
-  await updateDoc(doc(db, "listas", listaActiva, "items", id), {
-    checked: !estado
-  });
-};
+// 🔗 BOTONES
+bCrear.addEventListener("click",crearLista);
+bAgregar.addEventListener("click",agregarItem);
+bPush.addEventListener("click",activarPush);
+bGuardar.addEventListener("click",guardarHora);
 
-// ⏰ SCHEDULE
-window.guardarHora = async () => {
-  await addDoc(collection(db, "schedules"), {
-    titulo: tituloHora.value,
-    hora: hora.value
-  });
+btnVolver.addEventListener("click",()=>location.reload());
 
-  alert("Guardado");
-};
-
-// 🌎 IDIOMA
-const textos = {
-  es: "Inventario PRO",
-  en: "Inventory PRO"
-};
-
-lang.onchange = e => {
-  titulo.innerText = textos[e.target.value];
-};
+console.log("APP OK 🔥");
 
 </script>
 
